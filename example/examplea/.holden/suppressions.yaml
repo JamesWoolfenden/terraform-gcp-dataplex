@@ -1,0 +1,15 @@
+suppressions:
+  # Dataplex tasks execute on Dataproc Serverless, which documents its
+  # networking requirement at the subnet level: ingress must be permitted on
+  # all ports between the workload subnetwork's own ranges. Serverless
+  # workloads run on Google-managed infrastructure and cannot carry a network
+  # tag, and are not matched by target_service_accounts, so neither of the
+  # scoping mechanisms HLD_GCP_540 accepts is available. The rule is already
+  # narrowed as far as it can be: INGRESS only, sourced from the single
+  # /24 subnet range (local.subnet_cidr) rather than a wider RFC1918 block,
+  # on a VPC whose default egress route is deleted, with firewall logging
+  # enabled so lateral movement across the range is observable.
+  - policy_id: HLD_GCP_540
+    resource_id: google_compute_firewall.allow_internal
+    reason: "Dataproc Serverless (backing Dataplex tasks) requires all-port internal ingress and supports neither network tags nor target_service_accounts; rule is scoped to the single /24 subnet range with logging enabled"
+    approved_by: james-woolfenden
