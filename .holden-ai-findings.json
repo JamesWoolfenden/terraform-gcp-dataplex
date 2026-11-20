@@ -99,7 +99,7 @@
       "explanation": "Dataproc Serverless batches encrypted with a CMEK need the Dataproc service agent and Compute Engine service agent to hold cryptoKeyEncrypterDecrypter. Whether Dataplex-launched batches use those agents or the Dataplex agent depends on Google-side behaviour not visible in the IaC, so this is rated medium.",
       "file": "example/examplea/google_kms_crypto_key_iam_member.dataplex_service_agent.tf",
       "first_seen": "2026-11-20",
-      "fixable": false,
+      "fixable": true,
       "id": "HOLDEN_AI_005",
       "last_seen": "2026-11-20",
       "line": 1,
@@ -109,13 +109,13 @@
         "module.dataplex"
       ],
       "remediation": "Confirm with a real run; if the batch fails on key access, grant cryptoKeyEncrypterDecrypter to service-PROJECT_NUMBER@dataproc-accounts.iam.gserviceaccount.com and service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.",
-      "resolution_note": "Not fixed: whether Dataplex-launched batches use the Dataproc/Compute service agents for CMEK cannot be confirmed from IaC, and the Dataproc agent is created lazily so a speculative grant could fail apply. Left open pending a real run of the example.",
+      "resolution_note": "Fixed in example/examplea per the Dataproc Serverless CMEK guide, which requires the Compute Engine, Dataproc and Cloud Storage service agents to hold cryptoKeyEncrypterDecrypter (Dataproc agent also encrypts batch job arguments since 2024-04-23). Added google_project_service_identity.dataproc (google-beta) so the lazily created Dataproc agent exists before granting, google_kms_crypto_key_iam_member.dataproc_service_agent and .compute_service_agent (service-PROJECT_NUMBER@compute-system, present once the Compute API is enabled), and added all four key grants to the module's depends_on. Module unchanged: KMS grants live in the example, matching the existing pattern.",
       "resource": "google_kms_crypto_key_iam_member.dataplex_service_agent",
       "severity": "LOW",
-      "status": "open",
+      "status": "fixed",
       "suppression_reason": null,
       "title": "Example grants the CMEK key only to the Dataplex and GCS agents, not the Dataproc/Compute agents that run the batch",
-      "unresolved_since": "2026-11-20"
+      "unresolved_since": null
     },
     {
       "confidence": "medium",

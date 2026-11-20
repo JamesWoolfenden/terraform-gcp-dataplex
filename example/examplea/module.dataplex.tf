@@ -13,6 +13,9 @@ module "dataplex" {
 
   depends_on = [
     google_kms_crypto_key_iam_member.dataplex_service_agent,
+    google_kms_crypto_key_iam_member.dataproc_service_agent,
+    google_kms_crypto_key_iam_member.compute_service_agent,
+    google_kms_crypto_key_iam_member.gcs_service_agent,
     google_project_iam_member.dataproc_worker,
     google_storage_bucket_iam_member.scripts_reader,
     google_dns_record_set.googleapis_wildcard,
