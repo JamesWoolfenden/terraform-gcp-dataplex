@@ -35,4 +35,11 @@ resource "google_dataplex_task" "main" {
   }
 
   labels = var.labels
+
+  lifecycle {
+    precondition {
+      condition     = var.max_executors_count >= var.executors_count
+      error_message = "var.max_executors_count must be greater than or equal to var.executors_count"
+    }
+  }
 }

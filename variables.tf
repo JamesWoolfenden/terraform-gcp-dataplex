@@ -37,6 +37,11 @@ variable "service_account" {
     condition     = can(regex("^[^@]+@[^@]+$", var.service_account))
     error_message = "var.service_account must be a service account email address"
   }
+
+  validation {
+    condition     = !can(regex("-compute@developer\\.gserviceaccount\\.com$", var.service_account))
+    error_message = "var.service_account must be a dedicated service account, not the default Compute Engine service account"
+  }
 }
 
 variable "kms_key_name" {
@@ -73,6 +78,11 @@ variable "container_image" {
     condition     = !can(regex(":latest$", var.container_image))
     error_message = "var.container_image must be pinned to a digest or version tag, not :latest"
   }
+
+  validation {
+    condition     = can(regex("(@sha256:[a-f0-9]{64}|:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$", var.container_image))
+    error_message = "var.container_image must end in an explicit version tag or @sha256 digest; an untagged image resolves to :latest"
+  }
 }
 
 variable "subnetwork" {
@@ -87,12 +97,12 @@ variable "subnetwork" {
 
 variable "schedule" {
   type        = string
-  description = "Cron schedule the task runs on, in the form used by Cloud Scheduler"
+  description = "Cron schedule the task runs on, in the form used by Cloud Scheduler, optionally prefixed with CRON_TZ=Region/City or TZ=Region/City"
   default     = "0 3 * * *"
 
   validation {
-    condition     = length(split(" ", trimspace(var.schedule))) == 5
-    error_message = "var.schedule must be a five-field cron expression"
+    condition     = can(regex("^((CRON_TZ|TZ)=[^ ]+ +)?[^ ]+( +[^ ]+){4}$", trimspace(var.schedule)))
+    error_message = "var.schedule must be a five-field cron expression, optionally prefixed with CRON_TZ=Region/City or TZ=Region/City"
   }
 }
 

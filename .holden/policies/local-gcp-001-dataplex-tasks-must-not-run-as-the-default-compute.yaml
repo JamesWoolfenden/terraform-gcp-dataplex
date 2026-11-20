@@ -1,0 +1,17 @@
+id: LOCAL_GCP_001
+name: Dataplex tasks must not run as the default Compute Engine service account
+principle: identity-and-access
+severity: HIGH
+rationale: |
+  The default Compute Engine service account has the Editor role on the project.
+  A Dataplex task running as it gives any script it executes write access to
+  every project resource. Tasks should run as a dedicated, minimal service account.
+message: |
+  google_dataplex_task execution_spec.service_account is the default Compute Engine service account.
+remediation: |
+  Set execution_spec.service_account to a dedicated service account, e.g.
+  google_service_account.dataplex.email.
+resources:
+  google_dataplex_task:
+    path: execution_spec.service_account
+    not_matches: ".*-compute@developer\\.gserviceaccount\\.com$"

@@ -69,7 +69,7 @@ No modules.
 | <a name="input_max_executors_count"></a> [max\_executors\_count](#input\_max\_executors\_count) | Maximum number of Spark executors when autoscaling | `number` | `10` | no |
 | <a name="input_max_job_execution_lifetime"></a> [max\_job\_execution\_lifetime](#input\_max\_job\_execution\_lifetime) | Maximum time a job may run before it is cancelled, in seconds with an s suffix | `string` | `"7200s"` | no |
 | <a name="input_python_script_file"></a> [python\_script\_file](#input\_python\_script\_file) | Cloud Storage URI of the PySpark script the task runs | `string` | n/a | yes |
-| <a name="input_schedule"></a> [schedule](#input\_schedule) | Cron schedule the task runs on, in the form used by Cloud Scheduler | `string` | `"0 3 * * *"` | no |
+| <a name="input_schedule"></a> [schedule](#input\_schedule) | Cron schedule the task runs on, in the form used by Cloud Scheduler, optionally prefixed with CRON\_TZ=Region/City or TZ=Region/City | `string` | `"0 3 * * *"` | no |
 | <a name="input_service_account"></a> [service\_account](#input\_service\_account) | Email of the service account the task runs as | `string` | n/a | yes |
 | <a name="input_subnetwork"></a> [subnetwork](#input\_subnetwork) | Subnetwork the Spark job runs in | `string` | n/a | yes |
 | <a name="input_task_id"></a> [task\_id](#input\_task\_id) | Identifier of the Dataplex task | `string` | n/a | yes |

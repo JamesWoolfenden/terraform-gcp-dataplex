@@ -1,0 +1,207 @@
+{
+  "category": "all",
+  "findings": [
+    {
+      "confidence": "high",
+      "explanation": "The only pinning guard is !can(regex(\":latest$\")). An image with no tag or digest (e.g. europe-docker.pkg.dev/p/r/spark) passes validation but the registry resolves it to whatever currently holds :latest, so the scheduled Spark job silently changes runtime between runs. The README promises the module rejects floating images; HLD_GCP_415 only covers CMEK, so no deterministic rule sees this.",
+      "file": "variables.tf",
+      "first_seen": "2026-11-20",
+      "fix": "validation {\n  condition     = can(regex(\"(@sha256:[a-f0-9]{64}|:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$\", var.container_image))\n  error_message = \"var.container_image must end in an explicit version tag or @sha256 digest\"\n}",
+      "fixable": true,
+      "id": "HOLDEN_AI_001",
+      "last_seen": "2026-11-20",
+      "line": 63,
+      "principle": "supply-chain",
+      "related_resources": [
+        "google_dataplex_task.main"
+      ],
+      "remediation": "Require the image to end in an explicit tag (other than latest) or an @sha256 digest.",
+      "resolution_note": "Added a validation requiring an explicit tag or @sha256 digest (variables.tf).",
+      "resource": "variable.container_image",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "container_image validation rejects :latest but accepts an untagged image, which resolves to latest",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "high",
+      "explanation": "var.service_account is only checked for an @ sign. Passing PROJECT_NUMBER-compute@developer.gserviceaccount.com runs an unattended PySpark job with project Editor, so any compromised script in the bucket can modify the whole project. holden has default-SA rules for Cloud Run, Dataflow, Workflows etc. but none for google_dataplex_task.",
+      "file": "variables.tf",
+      "first_seen": "2026-11-20",
+      "fix": "validation {\n  condition     = !can(regex(\"-compute@developer\\\\.gserviceaccount\\\\.com$\", var.service_account))\n  error_message = \"var.service_account must be a dedicated service account, not the default Compute Engine service account\"\n}",
+      "fixable": true,
+      "id": "HOLDEN_AI_002",
+      "last_seen": "2026-11-20",
+      "line": 32,
+      "principle": "identity-and-access",
+      "related_resources": [
+        "google_dataplex_task.main"
+      ],
+      "remediation": "Reject the default Compute Engine service account in the variable validation.",
+      "resolution_note": "Added a validation rejecting *-compute@developer.gserviceaccount.com (variables.tf).",
+      "resource": "variable.service_account",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "service_account accepts the default Compute Engine service account, which holds Editor",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "high",
+      "explanation": "delete_default_routes_on_create removes the 0.0.0.0/0 route and the only replacement covers 199.36.153.8/30. Without a private Cloud DNS zone, *.googleapis.com and *.pkg.dev still resolve to public Google IPs, which now have no route, so Private Google Access cannot reach GCS (the script), Artifact Registry (the image) or Dataproc and every task run fails. A composition of three resources; no single-resource rule can see it. Principle is a best fit: the failure is an apply-time/run-time breakage, not a security gap.",
+      "file": "example/examplea/google_compute_route.private_google_apis.tf",
+      "first_seen": "2026-11-20",
+      "fixable": false,
+      "id": "HOLDEN_AI_003",
+      "last_seen": "2026-11-20",
+      "line": 4,
+      "principle": "reliability",
+      "related_resources": [
+        "google_compute_network.dataplex",
+        "google_compute_subnetwork.dataplex",
+        "module.dataplex"
+      ],
+      "remediation": "Add private google_dns_managed_zone resources for googleapis.com and pkg.dev on the network, with a CNAME of * to private.googleapis.com and A records for private.googleapis.com to 199.36.153.8-11.",
+      "resolution_note": "Added private Cloud DNS zones for googleapis.com and pkg.dev (query logging on) with CNAME/A records to private.googleapis.com in example/examplea.",
+      "resource": "google_compute_route.private_google_apis",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "Example deletes the default route and routes only the private.googleapis.com VIP, but no private DNS points Google APIs at that VIP",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "high",
+      "explanation": "The task runs as google_service_account.dataplex, but nothing grants it roles/dataproc.worker (required by Dataproc Serverless, which backs Dataplex Spark tasks) or read on the scripts bucket. The README states both are required. The task will create cleanly and then fail on every cron trigger.",
+      "file": "example/examplea/google_service_account.dataplex.tf",
+      "first_seen": "2026-11-20",
+      "fixable": false,
+      "id": "HOLDEN_AI_004",
+      "last_seen": "2026-11-20",
+      "line": 1,
+      "principle": "reliability",
+      "related_resources": [
+        "module.dataplex",
+        "google_storage_bucket.scripts"
+      ],
+      "remediation": "Grant roles/dataproc.worker on the project and roles/storage.objectViewer on the scripts bucket to the task service account.",
+      "resolution_note": "Granted roles/dataproc.worker (project) and roles/storage.objectViewer (scripts bucket) to the task SA in example/examplea; module depends_on them.",
+      "resource": "google_service_account.dataplex",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "Example task service account is created with no roles, so every scheduled run fails",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "medium",
+      "explanation": "Dataproc Serverless batches encrypted with a CMEK need the Dataproc service agent and Compute Engine service agent to hold cryptoKeyEncrypterDecrypter. Whether Dataplex-launched batches use those agents or the Dataplex agent depends on Google-side behaviour not visible in the IaC, so this is rated medium.",
+      "file": "example/examplea/google_kms_crypto_key_iam_member.dataplex_service_agent.tf",
+      "first_seen": "2026-11-20",
+      "fixable": false,
+      "id": "HOLDEN_AI_005",
+      "last_seen": "2026-11-20",
+      "line": 1,
+      "principle": "reliability",
+      "related_resources": [
+        "google_kms_crypto_key.dataplex",
+        "module.dataplex"
+      ],
+      "remediation": "Confirm with a real run; if the batch fails on key access, grant cryptoKeyEncrypterDecrypter to service-PROJECT_NUMBER@dataproc-accounts.iam.gserviceaccount.com and service-PROJECT_NUMBER@compute-system.iam.gserviceaccount.com.",
+      "resolution_note": "Not fixed: whether Dataplex-launched batches use the Dataproc/Compute service agents for CMEK cannot be confirmed from IaC, and the Dataproc agent is created lazily so a speculative grant could fail apply. Left open pending a real run of the example.",
+      "resource": "google_kms_crypto_key_iam_member.dataplex_service_agent",
+      "severity": "LOW",
+      "status": "open",
+      "suppression_reason": null,
+      "title": "Example grants the CMEK key only to the Dataplex and GCS agents, not the Dataproc/Compute agents that run the batch",
+      "unresolved_since": "2026-11-20"
+    },
+    {
+      "confidence": "medium",
+      "explanation": "Each variable is validated only as >= 2, so executors_count = 10 with max_executors_count = 4 passes plan and is rejected by the API (or produces a nonsensical autoscaling range) at apply time.",
+      "file": "google_dataplex_task.main.tf",
+      "first_seen": "2026-11-20",
+      "fix": "lifecycle {\n  precondition {\n    condition     = var.max_executors_count >= var.executors_count\n    error_message = \"var.max_executors_count must be greater than or equal to var.executors_count\"\n  }\n}",
+      "fixable": true,
+      "id": "HOLDEN_AI_006",
+      "last_seen": "2026-11-20",
+      "line": 1,
+      "principle": "reliability",
+      "related_resources": [
+        "variable.executors_count",
+        "variable.max_executors_count"
+      ],
+      "remediation": "Add a lifecycle precondition on google_dataplex_task.main requiring max_executors_count >= executors_count.",
+      "resolution_note": "Added a lifecycle precondition on google_dataplex_task.main.",
+      "resource": "google_dataplex_task.main",
+      "severity": "LOW",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "max_executors_count can be set below executors_count",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "high",
+      "explanation": "The check requires exactly five space-separated fields. Dataplex accepts \"CRON_TZ=Europe/London 0 3 * * *\" to pin a timezone, which this validation rejects, forcing UTC-only schedules. Repeated spaces between fields are also rejected.",
+      "file": "variables.tf",
+      "first_seen": "2026-11-20",
+      "fixable": true,
+      "id": "HOLDEN_AI_007",
+      "last_seen": "2026-11-20",
+      "line": 88,
+      "principle": "maintainability",
+      "related_resources": [
+        "google_dataplex_task.main"
+      ],
+      "remediation": "Allow an optional CRON_TZ=/TZ= prefix and any whitespace between the five fields.",
+      "resolution_note": "Validation now accepts an optional CRON_TZ=/TZ= prefix and repeated spaces.",
+      "resource": "variable.schedule",
+      "severity": "LOW",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "schedule validation rejects the CRON_TZ= / TZ= prefix Dataplex documents for timezone-pinned schedules",
+      "unresolved_since": null
+    },
+    {
+      "confidence": "high",
+      "explanation": "holden reports the inline HLD_GCP_113 suppression as unused: the policy no longer fires on this bucket. Dead suppressions hide future regressions under a policy nobody re-reviews.",
+      "file": "example/examplea/google_storage_bucket.scripts.tf",
+      "first_seen": "2026-11-20",
+      "fix": "# delete: # holden:ignore:HLD_GCP_113 ...",
+      "fixable": true,
+      "id": "HOLDEN_AI_008",
+      "last_seen": "2026-11-20",
+      "line": 3,
+      "principle": "maintainability",
+      "related_resources": [],
+      "remediation": "Remove the unused suppression comment.",
+      "resolution_note": "Removed the unused HLD_GCP_113 inline suppression.",
+      "resource": "google_storage_bucket.scripts",
+      "severity": "INFO",
+      "status": "fixed",
+      "suppression_reason": null,
+      "title": "Stale holden:ignore HLD_GCP_113 suppression on the scripts bucket",
+      "unresolved_since": null
+    }
+  ],
+  "scan_date": "2026-11-20T00:00:00Z",
+  "scan_path": ".",
+  "suggested_policies": [
+    {
+      "first_seen": "2026-11-20",
+      "last_seen": "2026-11-20",
+      "rationale": "Dataplex Spark tasks run unattended as execution_spec.service_account. holden blocks the default Compute Engine SA (project Editor) for Cloud Run, Dataflow, Workflows and others but not for google_dataplex_task.",
+      "status": "installed",
+      "yaml": "id: LOCAL_GCP_001\nname: Dataplex tasks must not run as the default Compute Engine service account\nprinciple: identity-and-access\nseverity: HIGH\nrationale: |\n  The default Compute Engine service account has the Editor role on the project.\n  A Dataplex task running as it gives any script it executes write access to\n  every project resource. Tasks should run as a dedicated, minimal service account.\nmessage: |\n  google_dataplex_task execution_spec.service_account is the default Compute Engine service account.\nremediation: |\n  Set execution_spec.service_account to a dedicated service account, e.g.\n  google_service_account.dataplex.email.\nresources:\n  google_dataplex_task:\n    path: execution_spec.service_account\n    not_matches: \".*-compute@developer\\\\.gserviceaccount\\\\.com$\"\n"
+    },
+    {
+      "first_seen": "2026-11-20",
+      "last_seen": "2026-11-20",
+      "rationale": "Dataplex Spark task container images have no floating-tag rule; HLD_GCP_265 covers the same risk for Cloud Run jobs (both :latest and untagged references).",
+      "status": "installed",
+      "yaml": "id: LOCAL_GCP_002\nname: Dataplex Spark task container images must not use a floating tag\nprinciple: supply-chain\nseverity: HIGH\nrationale: |\n  A Dataplex task image tagged :latest, or with no tag or digest at all, resolves\n  to whatever currently holds that name, so the scheduled job silently changes\n  runtime between runs and cannot be audited or reproduced.\nmessage: |\n  google_dataplex_task spark.infrastructure_spec.container_image.image uses :latest or no tag.\nremediation: |\n  Pin the image to a version tag or digest, e.g.\n  europe-docker.pkg.dev/p/r/spark:3.5.1 or ...@sha256:<digest>.\nresources:\n  google_dataplex_task:\n    all:\n      - path: spark.infrastructure_spec.container_image.image\n        not_matches: \":latest$\"\n      - path: spark.infrastructure_spec.container_image.image\n        not_matches: \"^([^/]+/)*[^/:@]+$\"\n"
+    }
+  ],
+  "suggested_suppressions": []
+}

@@ -1,0 +1,20 @@
+id: LOCAL_GCP_002
+name: Dataplex Spark task container images must not use a floating tag
+principle: supply-chain
+severity: HIGH
+rationale: |
+  A Dataplex task image tagged :latest, or with no tag or digest at all, resolves
+  to whatever currently holds that name, so the scheduled job silently changes
+  runtime between runs and cannot be audited or reproduced.
+message: |
+  google_dataplex_task spark.infrastructure_spec.container_image.image uses :latest or no tag.
+remediation: |
+  Pin the image to a version tag or digest, e.g.
+  europe-docker.pkg.dev/p/r/spark:3.5.1 or ...@sha256:<digest>.
+resources:
+  google_dataplex_task:
+    all:
+      - path: spark.infrastructure_spec.container_image.image
+        not_matches: ":latest$"
+      - path: spark.infrastructure_spec.container_image.image
+        not_matches: "^([^/]+/)*[^/:@]+$"

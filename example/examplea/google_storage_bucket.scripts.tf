@@ -1,5 +1,4 @@
 # holden:ignore:HLD_GCP_003 — example bucket, access logging target is out of scope
-# holden:ignore:HLD_GCP_113 — example bucket, access logging target is out of scope
 resource "google_storage_bucket" "scripts" {
   name                        = "example-dataplex-scripts"
   location                    = "europe-west2"

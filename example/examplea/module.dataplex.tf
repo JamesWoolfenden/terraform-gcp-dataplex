@@ -11,5 +11,11 @@ module "dataplex" {
   container_image    = "europe-docker.pkg.dev/example/images/spark:3.5.1"
   subnetwork         = google_compute_subnetwork.dataplex.id
 
-  depends_on = [google_kms_crypto_key_iam_member.dataplex_service_agent]
+  depends_on = [
+    google_kms_crypto_key_iam_member.dataplex_service_agent,
+    google_project_iam_member.dataproc_worker,
+    google_storage_bucket_iam_member.scripts_reader,
+    google_dns_record_set.googleapis_wildcard,
+    google_dns_record_set.pkg_dev_wildcard,
+  ]
 }
